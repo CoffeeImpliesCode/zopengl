@@ -48,4 +48,30 @@ pub fn build(b: *std.Build) void {
     });
     lib.root_module.addOptions("build_options", build_options);
     _ = b.installArtifact(lib);
+
+    // Emit the autodoc bundle for the library module only. This mirrors the
+    // options of the library above, so the documented API is the loader
+    // itself rather than this build script.
+    {
+        const docs_step = b.step("docs", "Generate API documentation");
+
+        const docs_obj = b.addObject(.{
+            .name = "zopengl",
+            .root_module = b.createModule(.{
+                .root_source_file = b.path("src/zopengl.zig"),
+                .target = target,
+                .optimize = optimize,
+            }),
+        });
+        docs_obj.root_module.addOptions("build_options", build_options);
+
+        const install_docs = b.addInstallDirectory(.{
+            .source_dir = docs_obj.getEmittedDocs(),
+            .install_dir = .prefix,
+            .install_subdir = "docs",
+        });
+
+        docs_step.dependOn(&install_docs.step);
+        docs_step.dependOn(&docs_obj.step);
+    }
 }
